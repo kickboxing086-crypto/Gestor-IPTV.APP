@@ -1,0 +1,8 @@
+{
+  "name": "Gestor IPTV",
+  "description": "Plataforma de gestão para lojistas e revendedores de IPTV.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
