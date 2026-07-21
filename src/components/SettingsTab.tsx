@@ -210,6 +210,27 @@ export default function SettingsTab({ settings: initialSettings, onSave }: { set
             <input type="password" value={settings.pinCode || ''} onChange={e => setSettings({...settings, pinCode: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" maxLength={4} placeholder="Ex: 1234" />
           </div>
 
+          <div className="md:col-span-2 space-y-2 border-t border-slate-800 pt-6 mt-2">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-400">Banner de Promoção (Destacado no Início)</label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-sm text-slate-300">Ativo</span>
+                <input 
+                  type="checkbox"
+                  checked={settings.isPromotionalBannerActive || false}
+                  onChange={e => setSettings({...settings, isPromotionalBannerActive: e.target.checked})}
+                  className="w-4 h-4 text-blue-500 bg-slate-950 border-slate-700 rounded focus:ring-blue-500"
+                />
+              </label>
+            </div>
+            <textarea 
+              value={settings.promotionalBannerText || ''} 
+              onChange={e => setSettings({...settings, promotionalBannerText: e.target.value})} 
+              className={`w-full bg-slate-950 border ${settings.isPromotionalBannerActive ? 'border-yellow-500/50' : 'border-slate-800'} rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500/50 h-20 transition-all`}
+              placeholder="Ex: PROMOÇÃO DE FIM DE ANO! Assine o plano Anual com 50% de desconto."
+            />
+          </div>
+
           <div className="md:col-span-2 space-y-2">
             <label className="block text-sm font-medium text-slate-400">Mensagem de Boas-vindas</label>
             <textarea value={settings.welcomeMessage || ''} onChange={e => setSettings({...settings, welcomeMessage: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 h-24 transition-all" />

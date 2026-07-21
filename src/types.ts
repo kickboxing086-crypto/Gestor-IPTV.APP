@@ -63,6 +63,8 @@ export interface StoreSettings {
   footerText?: string;
   primaryColor?: string;
   instagramUrl?: string;
+  promotionalBannerText?: string;
+  isPromotionalBannerActive?: boolean;
 }
 
 export const DEFAULT_PLANS: Plan[] = [

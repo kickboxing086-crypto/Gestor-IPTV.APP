@@ -11,6 +11,7 @@ export default function Home() {
   const [plans, setPlans] = useState<any[]>([]);
   const [whatsapp, setWhatsapp] = useState("5584999857391");
   const [instagram, setInstagram] = useState("");
+  const [promoBanner, setPromoBanner] = useState<{ active: boolean; text: string }>({ active: false, text: '' });
 
   useEffect(() => {
     const settings = getStoreSettingsBySlug(storeSlug);
@@ -18,6 +19,9 @@ export default function Home() {
       setPlans(settings.plans.length > 0 ? settings.plans : DEFAULT_PLANS);
       if (settings.whatsappNumber) setWhatsapp(settings.whatsappNumber);
       if (settings.instagramUrl) setInstagram(settings.instagramUrl);
+      if (settings.isPromotionalBannerActive && settings.promotionalBannerText) {
+        setPromoBanner({ active: true, text: settings.promotionalBannerText });
+      }
       document.documentElement.style.setProperty('--primary-color', settings.primaryColor || '#3b82f6');
     } else {
       setPlans(DEFAULT_PLANS);
@@ -26,10 +30,32 @@ export default function Home() {
 
   return (
     <div className="flex-1 w-full max-w-7xl mx-auto px-4 py-12 flex flex-col items-center">
+      <AnimatePresence>
+        {promoBanner.active && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="w-full max-w-4xl mb-12 p-1 rounded-2xl bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 shadow-xl shadow-orange-500/20"
+          >
+            <div className="bg-slate-950/90 backdrop-blur-xl rounded-2xl p-6 sm:p-8 text-center border border-white/10 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-500/20 via-slate-900/0 to-slate-900/0 pointer-events-none"></div>
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs font-black uppercase tracking-widest py-1 px-4 rounded-full mb-4 shadow-lg">
+                <span className="w-2 h-2 rounded-full bg-black animate-pulse"></span>
+                Promoção Especial
+              </div>
+              <p className="text-white text-lg sm:text-2xl font-bold leading-relaxed relative z-10 whitespace-pre-line">
+                {promoBanner.text}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+        transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1], delay: promoBanner.active ? 0.2 : 0 }}
         className="text-center max-w-2xl mb-16"
       >
         <h2 className="text-3xl md:text-5xl leading-tight font-extrabold text-white mb-6">

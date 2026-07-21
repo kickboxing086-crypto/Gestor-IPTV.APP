@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Search, Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getStoreSettingsBySlug } from '../lib/store';
+import defaultLogo from '../assets/images/app_logo_1784678188597.jpg';
 
 export default function Header() {
   const { storeSlug } = useParams();
@@ -15,11 +16,11 @@ export default function Header() {
       if (settings.logoUrl) {
         setLogoUrl(settings.logoUrl);
       } else {
-        setLogoUrl(null);
+        setLogoUrl(defaultLogo);
       }
     } else {
       setStoreName('Minha Loja');
-      setLogoUrl(null);
+      setLogoUrl(defaultLogo);
     }
   }, [storeSlug]);
 
