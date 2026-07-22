@@ -48,7 +48,7 @@ export default function AdminLogin() {
       if (email === 'elitestreambr1@gmail.com' && password === '861139' && !user) {
          localStorage.setItem('admin_auth', 'true');
          localStorage.setItem('tenant_email', email);
-         localStorage.setItem('tenant_storeName', 'Elite Streaming');
+         localStorage.setItem('tenant_storeName', 'Gestor IPTV');
          const settings = getStoreSettings(email);
          updateStoreSettings(settings);
          showToast('Bem-vindo de volta!', 'success');

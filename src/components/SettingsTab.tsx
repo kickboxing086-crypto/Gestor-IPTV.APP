@@ -28,8 +28,23 @@ export default function SettingsTab({ settings: initialSettings, onSave }: { set
       const newId = `plan_${Math.random().toString(36).substring(2, 7)}`;
       setSettings({
         ...settings,
-        plans: [...settings.plans, { id: newId, name: 'Novo Plano', price: 0, durationMonths: 1 }]
+        plans: [...settings.plans, { id: newId, name: 'Novo Plano', price: 29.90, durationMonths: 1 }]
       });
+    }
+  };
+
+  const addTestPlan = () => {
+    if (settings) {
+      const hasTest = settings.plans.some(p => p.id === 'teste');
+      if (hasTest) {
+        showToast('O Plano de Teste já está cadastrado!', 'info');
+        return;
+      }
+      setSettings({
+        ...settings,
+        plans: [{ id: 'teste', name: 'Teste Grátis 4 Horas', price: 0, durationMonths: 0 }, ...settings.plans]
+      });
+      showToast('Plano de Teste Grátis adicionado!', 'success');
     }
   };
 
@@ -267,22 +282,32 @@ export default function SettingsTab({ settings: initialSettings, onSave }: { set
         transition={{ delay: 0.2 }}
         className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl"
       >
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
             <div className="w-1.5 h-6 bg-emerald-500 rounded-full"></div>
-            Planos e Preços
+            Planos, Degustação (Teste) e Vantagens
           </h3>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={addPlan} 
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm rounded-lg transition-all shadow-lg shadow-emerald-600/20 font-bold"
-          >
-            <Plus className="w-4 h-4" /> Novo Plano
-          </motion.button>
+          <div className="flex items-center gap-2">
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={addTestPlan} 
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 text-xs rounded-lg transition-all shadow-lg shadow-blue-600/20 font-bold"
+            >
+              <Plus className="w-4 h-4" /> Plano de Teste (Degustação)
+            </motion.button>
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={addPlan} 
+              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs rounded-lg transition-all shadow-lg shadow-emerald-600/20 font-bold"
+            >
+              <Plus className="w-4 h-4" /> Novo Plano
+            </motion.button>
+          </div>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-6">
           <AnimatePresence initial={false}>
             {settings.plans.map((plan, index) => (
               <motion.div 
@@ -291,54 +316,88 @@ export default function SettingsTab({ settings: initialSettings, onSave }: { set
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.3 }}
-                className="flex flex-col sm:flex-row gap-4 p-4 border border-slate-800 rounded-lg bg-slate-950/50 items-start sm:items-center group hover:border-slate-700 transition-colors shadow-inner"
+                className="flex flex-col gap-4 p-5 border border-slate-800 rounded-xl bg-slate-950/60 shadow-lg relative group hover:border-slate-700 transition-all"
               >
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Nome</label>
-                    <input type="text" value={plan.name} onChange={e => updatePlan(index, 'name', e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-white focus:border-blue-500 outline-none transition-all" />
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1 w-full">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Nome do Plano</label>
+                        {plan.id === 'teste' && (
+                          <span className="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
+                            TESTE GRÁTIS
+                          </span>
+                        )}
+                      </div>
+                      <input type="text" value={plan.name} onChange={e => updatePlan(index, 'name', e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none transition-all font-medium" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Valor R$ (Vírgula aceita)</label>
+                      <input 
+                        type="text" 
+                        inputMode="decimal"
+                        value={priceInputs[index] !== undefined ? priceInputs[index] : (plan.price === 0 ? '0,00' : plan.price.toString().replace('.', ','))} 
+                        onChange={e => {
+                          const rawVal = e.target.value;
+                          setPriceInputs(prev => ({ ...prev, [index]: rawVal }));
+                          const normalized = rawVal.replace(',', '.').trim();
+                          const parsed = parseFloat(normalized);
+                          updatePlan(index, 'price', rawVal === '' || isNaN(parsed) ? 0 : parsed);
+                        }} 
+                        placeholder="Ex: 29,90 ou 0,00"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all font-mono" 
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Duração (Meses - 0 para Teste)</label>
+                      <input 
+                        type="text" 
+                        value={plan.durationMonths === undefined ? '' : plan.durationMonths} 
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === '' || !isNaN(parseInt(val))) {
+                            updatePlan(index, 'durationMonths', val === '' ? 0 : parseInt(val));
+                          }
+                        }} 
+                        placeholder="1"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" 
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">R$</label>
-                    <input 
-                      type="text" 
-                      inputMode="decimal"
-                      value={priceInputs[index] !== undefined ? priceInputs[index] : (plan.price === 0 ? '' : plan.price.toString().replace('.', ','))} 
-                      onChange={e => {
-                        const rawVal = e.target.value;
-                        setPriceInputs(prev => ({ ...prev, [index]: rawVal }));
-                        const normalized = rawVal.replace(',', '.').trim();
-                        const parsed = parseFloat(normalized);
-                        updatePlan(index, 'price', rawVal === '' || isNaN(parsed) ? 0 : parsed);
-                      }} 
-                      placeholder="Ex: 29,90"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" 
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Meses</label>
-                    <input 
-                      type="text" 
-                      value={plan.durationMonths === 0 ? '' : plan.durationMonths} 
-                      onChange={e => {
-                        const val = e.target.value;
-                        if (val === '' || !isNaN(parseInt(val))) {
-                          updatePlan(index, 'durationMonths', val === '' ? 0 : parseInt(val));
-                        }
-                      }} 
-                      placeholder="1"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" 
-                    />
-                  </div>
+
+                  <motion.button 
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => removePlan(index)} 
+                    className="text-red-400 hover:text-red-300 p-2.5 bg-red-400/10 hover:bg-red-400/20 rounded-xl transition-colors shrink-0 self-end sm:self-center"
+                    title="Excluir Plano"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </motion.button>
                 </div>
-                <motion.button 
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => removePlan(index)} 
-                  className="text-red-400 hover:text-red-300 p-2 bg-red-400/10 hover:bg-red-400/20 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </motion.button>
+
+                {/* CEO Customizable Advantages (Vantagens do Plano) */}
+                <div className="space-y-1 border-t border-slate-800/80 pt-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                      Vantagens do Plano (1 por linha)
+                    </label>
+                    <span className="text-[10px] text-slate-500">Opcional - Deixe em branco para usar o padrão</span>
+                  </div>
+                  <textarea
+                    rows={3}
+                    value={(plan.features || []).join('\n')}
+                    onChange={e => {
+                      const lines = e.target.value.split('\n');
+                      updatePlan(index, 'features', lines);
+                    }}
+                    placeholder={`Ex:\nQualidade 4K / FHD\nCanais ao vivo, Filmes e Séries\nSem fidelidade ou multas\nSuporte Premium 24h`}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 outline-none transition-all font-sans leading-relaxed"
+                  />
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>

@@ -119,6 +119,19 @@ export const addNews = (news: Omit<NewsItem, "id" | "date">): NewsItem => {
   return newItem;
 };
 
+export const updateNews = (id: string, updates: Partial<NewsItem>) => {
+  const newsList = getNews();
+  const index = newsList.findIndex(n => n.id === id);
+  if (index !== -1) {
+    newsList[index] = { ...newsList[index], ...updates };
+    try {
+      localStorage.setItem(NEWS_STORAGE_KEY, JSON.stringify(newsList));
+    } catch (error) {
+      console.error("Error updating news in localStorage:", error);
+    }
+  }
+};
+
 export const deleteNews = (id: string) => {
   const newsList = getNews();
   const filtered = newsList.filter(n => n.id !== id);
@@ -127,6 +140,26 @@ export const deleteNews = (id: string) => {
   } catch (error) {
     console.error("Error updating news in localStorage:", error);
   }
+};
+
+export const getDefaultPlanFeatures = (planId: string, durationMonths: number): string[] => {
+  if (planId === 'teste' || durationMonths === 0) {
+    return [
+      "⚡ Teste Grátis Sem Compromisso",
+      "📺 Acesso Completo a Todos os Canais",
+      "🍿 +100.000 Filmes & Séries Liberados",
+      "📱 Funciona em Smart TV, TV Box e Celular",
+      "⚡ Qualidade 4K / FHD Sem Travamentos"
+    ];
+  }
+  return [
+    "📺 Lista VIP de Canais + Abertos e Fechados",
+    "🍿 +100.000 Filmes e Séries Atualizados",
+    "⚡ Qualidade 4K / Ultra HD Sem Travamentos",
+    "📱 Vários Dispositivos Simultâneos",
+    "💬 Suporte Prioritário Via WhatsApp",
+    "🔒 Garantia de Sinal e Sem Fidelidade"
+  ];
 };
 
 import { StoreSettings, DEFAULT_PLANS } from '../types';
@@ -177,12 +210,12 @@ export const getStoreSettingsBySlug = (slug?: string): StoreSettings | null => {
     }
   }
   
-  // Fallback for default elitestream if no custom one exists
-  if (slug === 'elitestream') {
+  // Fallback for default store if no custom one exists
+  if (slug === 'elitestream' || slug === 'gestor') {
     return {
       tenantEmail: 'default',
-      storeName: 'Elite Stream',
-      storeSlug: 'elitestream',
+      storeName: 'Gestor IPTV',
+      storeSlug: slug,
       backgroundColor: 'bg-slate-950',
       accentColor: 'blue',
       plans: DEFAULT_PLANS,

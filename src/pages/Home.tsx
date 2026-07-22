@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { getStoreSettingsBySlug } from '../lib/store';
+import { getStoreSettingsBySlug, getDefaultPlanFeatures } from '../lib/store';
 import { Check, MessageCircle } from 'lucide-react';
 import { DEFAULT_PLANS } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -122,23 +122,16 @@ export default function Home() {
                 </div>
               </div>
 
-              <ul className="mb-8 space-y-4 flex-1">
-                <li className="flex items-start gap-3 text-slate-300">
-                  <Check className="w-5 h-5 shrink-0 mt-0.5 text-primary" />
-                  <span>Qualidade 4K / FHD</span>
-                </li>
-                <li className="flex items-start gap-3 text-slate-300">
-                  <Check className="w-5 h-5 shrink-0 mt-0.5 text-primary" />
-                  <span>Canais ao vivo, Filmes e Séries</span>
-                </li>
-                <li className="flex items-start gap-3 text-slate-300">
-                  <Check className="w-5 h-5 shrink-0 mt-0.5 text-primary" />
-                  <span>Atualizações diárias</span>
-                </li>
-                <li className="flex items-start gap-3 text-slate-300">
-                  <Check className="w-5 h-5 shrink-0 mt-0.5 text-primary" />
-                  <span>Suporte premium</span>
-                </li>
+              <ul className="mb-8 space-y-3.5 flex-1">
+                {(plan.features && plan.features.length > 0
+                  ? plan.features
+                  : getDefaultPlanFeatures(plan.id, plan.durationMonths)
+                ).map((feat: string, idx: number) => (
+                  <li key={idx} className="flex items-start gap-3 text-slate-300 text-sm font-medium">
+                    <Check className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
+                    <span>{feat}</span>
+                  </li>
+                ))}
               </ul>
 
               <div className={`w-full text-center font-medium py-3 px-6 rounded-xl transition-all outline-none bg-primary hover:opacity-90 text-white focus:ring-4 focus:ring-primary/30 shadow-lg shadow-primary/10 group-hover:scale-[1.02] active:scale-95`}>

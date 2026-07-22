@@ -1,4 +1,4 @@
-export function generatePixPayload(key: string, amount: number, merchantName = "Elite Streaming", merchantCity = "Brasil"): string {
+export function generatePixPayload(key: string, amount: number, merchantName = "Gestor IPTV", merchantCity = "Brasil"): string {
   function crc16(payload: string): string {
     let crc = 0xFFFF;
     for (let i = 0; i < payload.length; i++) {

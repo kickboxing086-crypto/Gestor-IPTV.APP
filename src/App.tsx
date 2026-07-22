@@ -103,7 +103,7 @@ export default function App() {
           <Route path="status" element={<Status />} />
           <Route path="novidades" element={<News />} />
         </Route>
-        <Route path="/" element={<Navigate to="/elitestream" replace />} />
+        <Route path="/" element={<Navigate to={`/${localStorage.getItem('tenant_storeName')?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'gestor'}`} replace />} />
         <Route path="/admin/login" element={<Navigate to="/login/administrador/entrar/gestor" replace />} />
         <Route path="/admin" element={<Navigate to="/login/administrador/entrar/gestor" replace />} />
       </Routes>

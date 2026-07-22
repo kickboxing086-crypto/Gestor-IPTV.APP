@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { getSubscriptions, updateSubscriptionAdmin, formatDeviceType, addSubscription, deleteSubscription, getNews, addNews, deleteNews, updateStoreSettings } from '../lib/store';
+import { getSubscriptions, updateSubscriptionAdmin, formatDeviceType, addSubscription, deleteSubscription, getNews, addNews, updateNews, deleteNews, updateStoreSettings } from '../lib/store';
 import { Subscription, DeviceType, NewsItem } from '../types';
 import { DEFAULT_PLANS } from '../types';
 import SettingsTab from "../components/SettingsTab";
@@ -167,15 +167,37 @@ export default function AdminDashboard() {
     }
   };
 
+  const [editingNewsId, setEditingNewsId] = useState<string | null>(null);
+  const [isConfirmingDeleteNews, setIsConfirmingDeleteNews] = useState<string | null>(null);
+
+  const handleStartEditNews = (item: NewsItem) => {
+    setEditingNewsId(item.id);
+    setNewNewsTitle(item.title);
+    setNewNewsContent(item.content);
+    setNewNewsImage(item.imageUrl || '');
+    setIsAddingNews(true);
+  };
+
   const handleAddNews = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNewsTitle || !newNewsContent) return;
     
-    addNews({
-      title: newNewsTitle,
-      content: newNewsContent,
-      imageUrl: newNewsImage || undefined,
-    });
+    if (editingNewsId) {
+      updateNews(editingNewsId, {
+        title: newNewsTitle,
+        content: newNewsContent,
+        imageUrl: newNewsImage || undefined,
+      });
+      showToast('Novidade atualizada com sucesso!', 'success');
+      setEditingNewsId(null);
+    } else {
+      addNews({
+        title: newNewsTitle,
+        content: newNewsContent,
+        imageUrl: newNewsImage || undefined,
+      });
+      showToast('Novidade adicionada com sucesso!', 'success');
+    }
     
     setNews(getNews().reverse());
     setIsAddingNews(false);
@@ -185,9 +207,15 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteNews = (id: string) => {
-    if (window.confirm("Certeza que deseja excluir esta novidade?")) {
-      deleteNews(id);
+    setIsConfirmingDeleteNews(id);
+  };
+
+  const confirmDeleteNews = () => {
+    if (isConfirmingDeleteNews) {
+      deleteNews(isConfirmingDeleteNews);
       setNews(getNews().reverse());
+      setIsConfirmingDeleteNews(null);
+      showToast('Novidade excluída com sucesso.', 'success');
     }
   };
 
@@ -1358,10 +1386,26 @@ export default function AdminDashboard() {
                 onSubmit={handleAddNews} 
                 className="bg-slate-900 border border-emerald-500/30 rounded-2xl overflow-hidden shadow-2xl mb-8"
               >
-                <div className="p-4 border-b border-slate-800 bg-emerald-500/10">
+                <div className="p-4 border-b border-slate-800 bg-emerald-500/10 flex justify-between items-center">
                   <h3 className="font-semibold text-emerald-400 flex items-center gap-2">
-                    <Plus className="w-5 h-5" /> Adicionar Nova Notícia / Atualização
+                    {editingNewsId ? <Edit2 className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                    {editingNewsId ? 'Editar Novidade / Atualização' : 'Adicionar Nova Notícia / Atualização'}
                   </h3>
+                  {editingNewsId && (
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setEditingNewsId(null);
+                        setIsAddingNews(false);
+                        setNewNewsTitle('');
+                        setNewNewsContent('');
+                        setNewNewsImage('');
+                      }} 
+                      className="text-slate-400 hover:text-white text-xs font-bold bg-slate-800 px-3 py-1 rounded-lg"
+                    >
+                      Cancelar Edição
+                    </button>
+                  )}
                 </div>
                 <div className="p-6 space-y-6">
                   <div className="space-y-1.5">
@@ -1420,7 +1464,7 @@ export default function AdminDashboard() {
                     type="submit" 
                     className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-xl text-sm font-bold inline-flex items-center gap-2 transition-all shadow-xl shadow-emerald-600/20"
                   >
-                    <Save className="w-5 h-5" /> Salvar Novidade
+                    <Save className="w-5 h-5" /> {editingNewsId ? 'Salvar Alterações' : 'Salvar Novidade'}
                   </motion.button>
                 </div>
               </motion.form>
@@ -1464,7 +1508,14 @@ export default function AdminDashboard() {
                         </div>
                         <h4 className="text-white font-bold text-lg mb-3 group-hover:text-blue-400 transition-colors">{item.title}</h4>
                         <p className="text-slate-400 text-sm whitespace-pre-wrap flex-1 leading-relaxed">{item.content}</p>
-                        <div className="border-t border-slate-800 mt-6 pt-4 flex justify-end">
+                        <div className="border-t border-slate-800 mt-6 pt-4 flex justify-end gap-2">
+                           <motion.button 
+                             whileTap={{ scale: 0.9 }}
+                             onClick={() => handleStartEditNews(item)}
+                             className="text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 transition-colors p-2 hover:bg-blue-500/10 rounded-lg"
+                           >
+                             <Edit2 className="w-4 h-4" /> Editar
+                           </motion.button>
                            <motion.button 
                              whileTap={{ scale: 0.9 }}
                              onClick={() => handleDeleteNews(item.id)}
@@ -1483,7 +1534,7 @@ export default function AdminDashboard() {
     </motion.div>
   </AnimatePresence>
 
-        {/* Modal de Confirmação de Exclusão */}
+        {/* Modal de Confirmação de Exclusão de Cliente */}
         <AnimatePresence>
           {isConfirmingDelete && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -1510,6 +1561,44 @@ export default function AdminDashboard() {
                     </button>
                     <button 
                       onClick={confirmDelete}
+                      className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-all shadow-lg shadow-red-600/20"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Modal de Confirmação de Exclusão de Novidade */}
+        <AnimatePresence>
+          {isConfirmingDeleteNews && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-slate-900 border border-red-500/30 rounded-2xl max-w-sm w-full p-6 shadow-2xl"
+              >
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+                    <Trash2 className="w-8 h-8 text-red-500" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Excluir Novidade</h3>
+                  <p className="text-slate-400 text-sm mb-6">
+                    Tem certeza que deseja excluir esta novidade? Ela deixará de ser exibida para todos os clientes.
+                  </p>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setIsConfirmingDeleteNews(null)}
+                      className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors border border-slate-700"
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      onClick={confirmDeleteNews}
                       className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-all shadow-lg shadow-red-600/20"
                     >
                       Excluir

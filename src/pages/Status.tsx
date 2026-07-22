@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSubscriptionByPhone, formatDeviceType, getSubscriptionByProtocol } from '../lib/store';
+import { getSubscriptionByPhone, formatDeviceType, getSubscriptionByProtocol, getNews } from '../lib/store';
 import { Subscription, DEFAULT_PLANS } from '../types';
 import { getStoreSettingsBySlug } from '../lib/store';
 import { Search, AlertCircle, Calendar, ArrowLeft } from 'lucide-react';
@@ -23,6 +23,11 @@ export default function Status() {
   const [phone, setPhone] = useState('');
   const [result, setResult] = useState<Subscription | null>(null);
   const [error, setError] = useState('');
+  const [newsList, setNewsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    setNewsList(getNews().reverse());
+  }, []);
 
   // Auto-search if a phone is saved locally OR if code is in URL
   useEffect(() => {
@@ -309,6 +314,53 @@ export default function Status() {
                     );
                   })}
                 </div>
+              )}
+
+              {/* Recent News & Content Releases Section */}
+              {newsList.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-8 pt-8 border-t border-slate-800"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-bold text-white flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+                      🔥 Novidades e Conteúdos Recentes
+                    </h4>
+                    <Link 
+                      to={storeSlug ? `/${storeSlug}/novidades` : '/novidades'} 
+                      className="text-xs font-bold text-blue-400 hover:text-blue-300 underline"
+                    >
+                      Ver Todas ({newsList.length})
+                    </Link>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {newsList.slice(0, 3).map((newsItem) => (
+                      <div 
+                        key={newsItem.id} 
+                        className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row gap-4 items-start hover:border-blue-500/40 transition-colors shadow-inner"
+                      >
+                        {newsItem.imageUrl && (
+                          <img 
+                            src={newsItem.imageUrl} 
+                            alt={newsItem.title} 
+                            className="w-full sm:w-28 h-20 object-cover rounded-lg border border-slate-800 shrink-0" 
+                          />
+                        )}
+                        <div className="flex-1">
+                          <div className="text-[10px] text-blue-400 font-bold uppercase tracking-wider mb-1">
+                            {new Date(newsItem.date).toLocaleDateString('pt-BR')} às {new Date(newsItem.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                          <h5 className="text-sm font-bold text-white mb-1 leading-tight">{newsItem.title}</h5>
+                          <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{newsItem.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
               )}
             </div>
           </motion.div>
