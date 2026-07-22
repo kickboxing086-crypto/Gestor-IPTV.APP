@@ -184,7 +184,14 @@ export default function SettingsTab({ settings: initialSettings, onSave }: { set
                     exit={{ opacity: 0, scale: 0.9 }}
                     className="w-full h-24 rounded-xl border border-slate-800 overflow-hidden bg-white/5 flex items-center justify-center relative group"
                   >
-                    <img src={settings.logoUrl} alt="Logo Preview" className="max-w-full max-h-full object-contain p-2" />
+                    <img 
+                      src={settings.logoUrl} 
+                      alt="Logo Preview" 
+                      className="max-w-full max-h-full object-contain p-2" 
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = 'https://placehold.co/200x200/0f172a/38bdf8?text=Logo+Invalida';
+                      }}
+                    />
                     <button 
                       onClick={() => setSettings({...settings, logoUrl: ''})}
                       className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"

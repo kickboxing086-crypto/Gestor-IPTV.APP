@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../components/Toast';
 import CustomSelect from '../components/CustomSelect';
 import { Plan } from '../types';
+import gestorLogo from '../assets/images/app_logo_gestor_1784140597832.jpg';
 
 // Helper function to guarantee that 'Teste' is always present in plan lists
 const getAvailablePlans = (settingsPlans?: Plan[]): Plan[] => {
@@ -383,12 +384,15 @@ export default function AdminDashboard() {
       >
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 pb-6 border-b border-slate-800">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-500/10 rounded-xl overflow-hidden border border-blue-500/20 flex items-center justify-center">
+            <div className="w-12 h-12 bg-slate-900 rounded-xl overflow-hidden border border-blue-500/20 flex items-center justify-center">
               <img 
-                src="/src/assets/images/app_logo_gestor_1784140597832.jpg" 
+                src={storeSettings?.logoUrl || gestorLogo} 
                 alt="Gestor Logo" 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = gestorLogo;
+                }}
               />
             </div>
             <div>

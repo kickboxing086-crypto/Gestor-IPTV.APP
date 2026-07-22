@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, UserPlus } from 'lucide-react';
 import { updateStoreSettings, getStoreSettings } from '../lib/store';
 import { useToast } from '../components/Toast';
+import gestorLogo from '../assets/images/app_logo_gestor_1784140597832.jpg';
 
 export default function AdminLogin() {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -75,10 +76,13 @@ export default function AdminLogin() {
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl">
         <div className="w-20 h-20 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden border border-blue-500/20">
           <img 
-            src="/src/assets/images/app_logo_gestor_1784140597832.jpg" 
+            src={gestorLogo} 
             alt="Logo Gestor" 
             className="w-full h-full object-cover" 
             referrerPolicy="no-referrer"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = gestorLogo;
+            }}
           />
         </div>
         

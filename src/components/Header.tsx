@@ -3,6 +3,7 @@ import { Search, Bell, Menu, X, Home, Zap, ShieldCheck, MessageCircle, Crown, Sp
 import { useEffect, useState } from 'react';
 import { getStoreSettingsBySlug } from '../lib/store';
 import defaultLogo from '../assets/images/app_logo_1784678188597.jpg';
+import gestorLogo from '../assets/images/app_logo_gestor_1784140597832.jpg';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Header() {
@@ -17,14 +18,14 @@ export default function Header() {
     if (settings) {
       if (settings.storeName) setStoreName(settings.storeName);
       if (settings.whatsappNumber) setWhatsappNumber(settings.whatsappNumber);
-      if (settings.logoUrl) {
+      if (settings.logoUrl && !settings.logoUrl.startsWith('/src/')) {
         setLogoUrl(settings.logoUrl);
       } else {
-        setLogoUrl(defaultLogo);
+        setLogoUrl(defaultLogo || gestorLogo);
       }
     } else {
       setStoreName('Minha Loja');
-      setLogoUrl(defaultLogo);
+      setLogoUrl(defaultLogo || gestorLogo);
     }
   }, [storeSlug]);
 
@@ -58,6 +59,9 @@ export default function Header() {
               alt={storeName} 
               className="h-11 sm:h-16 w-auto rounded-xl object-contain drop-shadow-[0_0_15px_rgba(251,191,36,0.3)] border border-white/10" 
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = defaultLogo || gestorLogo;
+              }}
             />
           )}
           <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight uppercase flex items-center gap-2">
@@ -124,6 +128,9 @@ export default function Header() {
                       alt={storeName}
                       className="h-16 w-16 object-contain rounded-xl bg-slate-950 p-1"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = defaultLogo || gestorLogo;
+                      }}
                     />
                   )}
                 </div>
