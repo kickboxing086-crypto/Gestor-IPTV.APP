@@ -11,6 +11,20 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../components/Toast';
 import CustomSelect from '../components/CustomSelect';
+import { Plan } from '../types';
+
+// Helper function to guarantee that 'Teste' is always present in plan lists
+const getAvailablePlans = (settingsPlans?: Plan[]): Plan[] => {
+  const currentPlans = (settingsPlans && settingsPlans.length > 0) ? [...settingsPlans] : [...DEFAULT_PLANS];
+  const hasTrial = currentPlans.some(p => p.id === 'teste' || p.name.toLowerCase().includes('teste'));
+  if (!hasTrial) {
+    return [
+      { id: 'teste', name: 'Teste (Degustação)', price: 0, durationMonths: 0 },
+      ...currentPlans
+    ];
+  }
+  return currentPlans;
+};
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -22,6 +36,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'clients' | 'news' | 'settings' | 'stats'>('stats');
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'trial' | 'pending_payment' | 'cancelled'>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   
   // Edit states
@@ -72,7 +87,7 @@ export default function AdminDashboard() {
     setNews(getNews().reverse());
 
     // Initialize planId to the first available plan
-    const availablePlans = settings.plans.length > 0 ? settings.plans : DEFAULT_PLANS;
+    const availablePlans = getAvailablePlans(settings.plans);
     if (availablePlans.length > 0) {
       setNewClient(prev => ({ ...prev, planId: availablePlans[0].id }));
     }
@@ -80,8 +95,9 @@ export default function AdminDashboard() {
 
   // Statistics calculations
   const stats = React.useMemo(() => {
-    const plans = storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS;
+    const plans = getAvailablePlans(storeSettings?.plans);
     const activeSubs = subscriptions.filter(s => s.status === 'active');
+    const trialSubs = subscriptions.filter(s => s.status === 'trial' || s.planId === 'teste');
     
     // Revenue calculations
     const monthlyRevenue = activeSubs.reduce((acc, sub) => {
@@ -92,8 +108,8 @@ export default function AdminDashboard() {
 
     // Users status
     const activeCount = activeSubs.length;
-    const expiredCount = subscriptions.filter(s => s.status === 'expired').length;
-    const trialCount = activeSubs.filter(s => s.planId === 'teste').length;
+    const expiredCount = subscriptions.filter(s => s.status === 'cancelled' || s.status === 'expired').length;
+    const trialCount = trialSubs.length;
     
     // Expiring soon (7 days)
     const sevenDaysFromNow = new Date();
@@ -106,11 +122,11 @@ export default function AdminDashboard() {
 
     // Plan distribution for chart
     const planDistribution = plans.map(plan => {
-      const planSubs = subscriptions.filter(s => s.planId === plan.id && s.status === 'active');
-      const revenue = planSubs.reduce((acc, sub) => acc + (sub.customPrice !== undefined ? sub.customPrice : plan.price), 0);
+      const planSubs = subscriptions.filter(s => s.planId === plan.id || (plan.id === 'teste' && s.status === 'trial'));
+      const revenue = planSubs.filter(s => s.status === 'active').reduce((acc, sub) => acc + (sub.customPrice !== undefined ? sub.customPrice : plan.price), 0);
       return {
         name: plan.name,
-        count: subscriptions.filter(s => s.planId === plan.id).length,
+        count: planSubs.length,
         revenue
       };
     }).filter(p => p.count > 0);
@@ -336,11 +352,23 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredSubs = subscriptions.filter(sub => 
-    sub.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    sub.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (sub.protocolCode && sub.protocolCode.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredSubs = subscriptions.filter(sub => {
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      !searchTerm ||
+      sub.firstName?.toLowerCase().includes(searchLower) || 
+      sub.lastName?.toLowerCase().includes(searchLower) ||
+      sub.phone?.includes(searchTerm) ||
+      (sub.protocolCode && sub.protocolCode.toLowerCase().includes(searchLower));
+
+    const matchesStatus = 
+      statusFilter === 'all' ? true :
+      statusFilter === 'trial' ? (sub.status === 'trial' || sub.planId === 'teste') :
+      statusFilter === 'cancelled' ? (sub.status === 'cancelled' || sub.status === 'expired') :
+      sub.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
 
   const filteredSubscriptions = filteredSubs;
 
@@ -480,34 +508,48 @@ export default function AdminDashboard() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="bg-slate-900/50 backdrop-blur-md border border-slate-800 p-6 rounded-2xl shadow-xl"
+                  onClick={() => {
+                    setActiveTab('clients');
+                    setStatusFilter('trial');
+                  }}
+                  className="bg-slate-900/50 hover:bg-slate-900/80 cursor-pointer border border-amber-500/30 hover:border-amber-500/60 transition-all p-6 rounded-2xl shadow-xl group"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <div className="p-2 bg-orange-500/20 rounded-lg">
-                      <AlertCircle className="w-5 h-5 text-orange-500" />
+                    <div className="p-2 bg-amber-500/20 rounded-lg group-hover:scale-110 transition-transform">
+                      <Clock className="w-5 h-5 text-amber-400 animate-pulse" />
                     </div>
-                    <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest bg-orange-500/10 px-2 py-0.5 rounded-full">Urgente</span>
+                    <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/30">Degustação</span>
                   </div>
-                  <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Vencem em 7 dias</h4>
-                  <p className="text-2xl font-bold text-white">{stats.expiringSoonCount}</p>
-                  <p className="text-[10px] text-slate-500 mt-2">Renovações pendentes próximas</p>
+                  <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Clientes em Teste</h4>
+                  <p className="text-3xl font-black text-amber-400">{stats.trialCount}</p>
+                  <p className="text-[10px] text-amber-300/80 mt-2 font-medium flex items-center justify-between">
+                    <span>Acessando lista de teste</span>
+                    <span className="underline font-bold">Ver lista →</span>
+                  </p>
                 </motion.div>
 
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="bg-slate-900/50 backdrop-blur-md border border-slate-800 p-6 rounded-2xl shadow-xl"
+                  onClick={() => {
+                    setActiveTab('clients');
+                    setStatusFilter('cancelled');
+                  }}
+                  className="bg-slate-900/50 hover:bg-slate-900/80 cursor-pointer border border-slate-800 hover:border-slate-700 transition-all p-6 rounded-2xl shadow-xl group"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <div className="p-2 bg-purple-500/20 rounded-lg">
-                      <Clock className="w-5 h-5 text-purple-500" />
+                    <div className="p-2 bg-red-500/20 rounded-lg group-hover:scale-110 transition-transform">
+                      <AlertCircle className="w-5 h-5 text-red-400" />
                     </div>
-                    <span className="text-[10px] font-bold text-purple-500 uppercase tracking-widest bg-purple-500/10 px-2 py-0.5 rounded-full">Histórico</span>
+                    <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest bg-red-500/10 px-2 py-0.5 rounded-full">Inativos</span>
                   </div>
-                  <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Expirados / Testes</h4>
-                  <p className="text-2xl font-bold text-white">{stats.expiredCount + stats.trialCount}</p>
-                  <p className="text-[10px] text-slate-500 mt-2">{stats.trialCount} usuários em teste grátis</p>
+                  <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Expirados / Cancelados</h4>
+                  <p className="text-2xl font-bold text-white">{stats.expiredCount}</p>
+                  <p className="text-[10px] text-slate-500 mt-2 font-medium flex items-center justify-between">
+                    <span>{stats.expiringSoonCount} vencendo em 7 dias</span>
+                    <span className="underline font-bold">Ver todos →</span>
+                  </p>
                 </motion.div>
               </div>
 
@@ -635,7 +677,7 @@ export default function AdminDashboard() {
                           const statusLink = `${window.location.origin}/${storeSettings?.storeSlug}/status?code=${lastCreatedSub.protocolCode}`;
                           const msg = `👋 Olá *${lastCreatedSub.firstName}*! Seu acesso ao *${STORE_NAME}* foi liberado!\n\n` +
                             `👤 *Nome:* ${lastCreatedSub.firstName} ${lastCreatedSub.lastName || ''}\n` +
-                            `📺 *Plano:* ${storeSettings?.plans.find(p => p.id === lastCreatedSub.planId)?.name}\n` +
+                            `📺 *Plano:* ${getAvailablePlans(storeSettings?.plans).find(p => p.id === lastCreatedSub.planId)?.name}\n` +
                             `📱 *Dispositivo:* ${lastCreatedSub.deviceType}\n` +
                             `🔑 *Código de Acesso:* ${lastCreatedSub.protocolCode}\n\n` +
                             `🔗 *Acesse seu painel aqui:*\n${statusLink}\n\n` +
@@ -651,7 +693,7 @@ export default function AdminDashboard() {
                             const statusLink = `${window.location.origin}/${storeSettings?.storeSlug}/status?code=${lastCreatedSub.protocolCode}`;
                             const msg = `👋 Olá *${lastCreatedSub.firstName}*! Seu acesso ao *${STORE_NAME}* foi liberado!\n\n` +
                               `👤 *Nome:* ${lastCreatedSub.firstName} ${lastCreatedSub.lastName || ''}\n` +
-                              `📺 *Plano:* ${storeSettings?.plans.find(p => p.id === lastCreatedSub.planId)?.name}\n` +
+                              `📺 *Plano:* ${getAvailablePlans(storeSettings?.plans).find(p => p.id === lastCreatedSub.planId)?.name}\n` +
                               `📱 *Dispositivo:* ${lastCreatedSub.deviceType}\n` +
                               `🔑 *Código de Acesso:* ${lastCreatedSub.protocolCode}\n\n` +
                               `🔗 *Acesse seu painel aqui:*\n${statusLink}\n\n` +
@@ -704,7 +746,7 @@ export default function AdminDashboard() {
                  <button
                    type="button"
                    onClick={() => {
-                     const currentPlans = storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS;
+                     const currentPlans = getAvailablePlans(storeSettings?.plans);
                      const paidPlan = currentPlans.find(p => p.id !== 'teste') || currentPlans[0];
                      
                      // Set date to 30 days from now
@@ -732,7 +774,7 @@ export default function AdminDashboard() {
                  <button
                    type="button"
                    onClick={() => {
-                     const currentPlans = storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS;
+                     const currentPlans = getAvailablePlans(storeSettings?.plans);
                      const trialPlan = currentPlans.find(p => p.id === 'teste' || p.name.toLowerCase().includes('teste')) || currentPlans[0];
                      
                      // Default trial expiration: 24h from now
@@ -819,7 +861,7 @@ export default function AdminDashboard() {
                    label="Plano Selecionado"
                    value={newClient.planId}
                    onChange={val => {
-                     const currentPlans = storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS;
+                     const currentPlans = getAvailablePlans(storeSettings?.plans);
                      const isTrial = val === 'teste' || val.toLowerCase().includes('teste');
                      setNewClient({
                        ...newClient,
@@ -828,7 +870,7 @@ export default function AdminDashboard() {
                        customPrice: isTrial ? '0.00' : newClient.customPrice,
                      });
                    }}
-                   options={(storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).map(p => ({
+                   options={getAvailablePlans(storeSettings?.plans).map(p => ({
                      value: p.id,
                      label: p.name,
                      badge: p.price === 0 ? 'GRÁTIS' : `R$ ${p.price.toFixed(2)}`,
@@ -994,10 +1036,44 @@ export default function AdminDashboard() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar cliente, código..."
+                placeholder="Buscar cliente, código, whatsapp..."
                 className="w-full bg-slate-950/50 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
               />
             </div>
+          </div>
+
+          {/* Quick Filter Bar for Trial, Active, Expirados */}
+          <div className="flex flex-wrap items-center gap-2 px-4 sm:px-6 py-2.5 bg-slate-950/60 border-b border-slate-800 text-xs overflow-x-auto">
+            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mr-1">Filtrar:</span>
+            {[
+              { id: 'all', label: 'Todos os Clientes', count: subscriptions.length },
+              { id: 'trial', label: '⚡ Em Teste Grátis', count: subscriptions.filter(s => s.status === 'trial' || s.planId === 'teste').length },
+              { id: 'active', label: 'Ativos (Pagos)', count: subscriptions.filter(s => s.status === 'active' && s.planId !== 'teste').length },
+              { id: 'pending_payment', label: 'Pendentes', count: subscriptions.filter(s => s.status === 'pending_payment').length },
+              { id: 'cancelled', label: 'Expirados / Cancelados', count: subscriptions.filter(s => s.status === 'cancelled' || s.status === 'expired').length },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setStatusFilter(tab.id as any)}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all text-xs flex items-center gap-2 cursor-pointer ${
+                  statusFilter === tab.id
+                    ? tab.id === 'trial'
+                      ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 font-black scale-105 ring-2 ring-amber-400/50'
+                      : 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 font-black scale-105 ring-2 ring-blue-400/50'
+                    : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
+                  statusFilter === tab.id
+                    ? tab.id === 'trial' ? 'bg-slate-950 text-amber-300' : 'bg-blue-950 text-blue-200'
+                    : 'bg-slate-950/80 text-slate-400'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
           </div>
 
           
@@ -1021,7 +1097,7 @@ export default function AdminDashboard() {
                   </tr>
                 ) : (
                   filteredSubscriptions.map((sub, index) => {
-                    const plan = (storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).find(p => p.id === sub.planId);
+                    const plan = getAvailablePlans(storeSettings?.plans).find(p => p.id === sub.planId);
                     const isEditing = editingId === sub.id;
                     
                     if (isEditing) {
@@ -1061,7 +1137,7 @@ export default function AdminDashboard() {
                               <CustomSelect
                                 value={editPlanId}
                                 onChange={val => setEditPlanId(val)}
-                                options={(storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).map(p => ({
+                                options={getAvailablePlans(storeSettings?.plans).map(p => ({
                                   value: p.id,
                                   label: p.name,
                                   badge: p.price === 0 ? 'GRÁTIS' : `R$ ${p.price.toFixed(2)}`,
@@ -1229,7 +1305,7 @@ export default function AdminDashboard() {
               <div className="text-center text-slate-500 py-8">Nenhuma assinatura encontrada.</div>
             ) : (
               filteredSubscriptions.map((sub) => {
-                const plan = (storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).find(p => p.id === sub.planId);
+                const plan = getAvailablePlans(storeSettings?.plans).find(p => p.id === sub.planId);
                 const isEditing = editingId === sub.id;
 
                 if (isEditing) {
@@ -1255,7 +1331,7 @@ export default function AdminDashboard() {
                             label="Plano"
                             value={editPlanId}
                             onChange={val => setEditPlanId(val)}
-                            options={(storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).map(p => ({
+                            options={getAvailablePlans(storeSettings?.plans).map(p => ({
                               value: p.id,
                               label: p.name,
                               badge: p.price === 0 ? 'GRÁTIS' : `R$ ${p.price.toFixed(2)}`,
@@ -1661,7 +1737,7 @@ export default function AdminDashboard() {
                       <div>
                         <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Plano</label>
                         <p className="text-white font-medium">
-                          {storeSettings?.plans.find(p => p.id === viewingClient.planId)?.name || 'N/A'}
+                          {getAvailablePlans(storeSettings?.plans).find(p => p.id === viewingClient.planId)?.name || 'N/A'}
                         </p>
                       </div>
                       <div>
@@ -1706,7 +1782,7 @@ export default function AdminDashboard() {
                           ) : (
                             <>
                               <p className="text-white font-bold text-2xl">
-                                R$ {(viewingClient.customPrice !== undefined ? viewingClient.customPrice : (storeSettings?.plans.find(p => p.id === viewingClient.planId)?.price || 0)).toFixed(2)}
+                                R$ {(viewingClient.customPrice !== undefined ? viewingClient.customPrice : (getAvailablePlans(storeSettings?.plans).find(p => p.id === viewingClient.planId)?.price || 0)).toFixed(2)}
                               </p>
                               {viewingClient.customPrice !== undefined && (
                                 <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-black bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
@@ -1715,7 +1791,7 @@ export default function AdminDashboard() {
                               )}
                               <button 
                                 onClick={() => {
-                                  setModalEditPrice(viewingClient.customPrice !== undefined ? viewingClient.customPrice.toString().replace('.', ',') : (storeSettings?.plans.find(p => p.id === viewingClient.planId)?.price || 0).toString().replace('.', ','));
+                                  setModalEditPrice(viewingClient.customPrice !== undefined ? viewingClient.customPrice.toString().replace('.', ',') : (getAvailablePlans(storeSettings?.plans).find(p => p.id === viewingClient.planId)?.price || 0).toString().replace('.', ','));
                                   setIsEditingPriceInModal(true);
                                 }}
                                 className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-lg border border-slate-700 transition-all hover:text-blue-400 hover:border-blue-500/30"
