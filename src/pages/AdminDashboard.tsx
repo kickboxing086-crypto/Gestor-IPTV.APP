@@ -10,6 +10,7 @@ import { LogOut, Search, User, Calendar, Save, Plus, X, Trash2, Image as ImageIc
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../components/Toast';
+import CustomSelect from '../components/CustomSelect';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -198,7 +199,7 @@ export default function AdminDashboard() {
     setEditPlanId(sub.planId);
     setEditStatus(sub.status);
     setEditExpiresAt(sub.expiresAt ? new Date(sub.expiresAt).toISOString().split('T')[0] : '');
-    setEditCustomPrice(sub.customPrice ? sub.customPrice.toString() : '');
+    setEditCustomPrice(sub.customPrice !== undefined ? sub.customPrice.toString().replace('.', ',') : '');
     
     // Convert old single-credential layout to new deviceCredentials mapping layout if needed
     const creds: Record<string, any> = {};
@@ -233,7 +234,7 @@ export default function AdminDashboard() {
       phone: editPhone,
       planId: editPlanId,
       status: editStatus,
-      customPrice: editCustomPrice ? parseFloat(editCustomPrice) : undefined,
+      customPrice: editCustomPrice ? parseFloat(editCustomPrice.replace(',', '.')) : undefined,
       expiresAt: editExpiresAt ? new Date(editExpiresAt + 'T12:00:00').toISOString() : undefined,
       deviceCredentials: dcs,
     });
@@ -272,7 +273,7 @@ export default function AdminDashboard() {
 
     const sub = addSubscription({
       ...newClient,
-      customPrice: newClient.customPrice ? parseFloat(newClient.customPrice) : undefined,
+      customPrice: newClient.customPrice ? parseFloat(newClient.customPrice.replace(',', '.')) : undefined,
       deviceType: selectedDevices.join(' + ') as DeviceType,
       deviceCredentials: dcs,
       expiresAt: newClient.expiresAt 
@@ -664,46 +665,171 @@ export default function AdminDashboard() {
               <Plus className="w-5 h-5" /> Adicionar Novo Cliente
             </h3>
           </div>
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-             <div className="space-y-1.5">
-               <label className="text-xs text-slate-400">Nome</label>
-               <input required type="text" value={newClient.firstName} onChange={e => setNewClient({...newClient, firstName: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all" />
+          <div className="p-6 space-y-6">
+             {/* Registration Type Toggle (Ativo vs Teste) */}
+             <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800/80 shadow-inner">
+               <label className="text-xs text-slate-400 font-semibold block mb-2.5 flex items-center gap-1.5">
+                 <User className="w-3.5 h-3.5 text-emerald-400" />
+                 Tipo de Cadastro do Cliente
+               </label>
+               <div className="grid grid-cols-2 gap-2.5">
+                 <button
+                   type="button"
+                   onClick={() => {
+                     const currentPlans = storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS;
+                     const paidPlan = currentPlans.find(p => p.id !== 'teste') || currentPlans[0];
+                     
+                     // Set date to 30 days from now
+                     const d = new Date();
+                     d.setDate(d.getDate() + 30);
+                     
+                     setNewClient({
+                       ...newClient,
+                       status: 'active',
+                       planId: paidPlan.id,
+                       customPrice: '',
+                       expiresAt: d.toISOString().split('T')[0],
+                     });
+                   }}
+                   className={`py-3 px-4 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 ${
+                     newClient.status === 'active'
+                       ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-400 shadow-lg shadow-emerald-500/15 ring-2 ring-emerald-500/30'
+                       : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                   }`}
+                 >
+                   <Check className="w-4 h-4 text-emerald-400" />
+                   <span>Cliente Ativo (Pago)</span>
+                 </button>
+
+                 <button
+                   type="button"
+                   onClick={() => {
+                     const currentPlans = storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS;
+                     const trialPlan = currentPlans.find(p => p.id === 'teste' || p.name.toLowerCase().includes('teste')) || currentPlans[0];
+                     
+                     // Default trial expiration: 24h from now
+                     const d = new Date();
+                     d.setDate(d.getDate() + 1);
+                     
+                     setNewClient({
+                       ...newClient,
+                       status: 'trial',
+                       planId: trialPlan.id,
+                       customPrice: '0.00',
+                       expiresAt: d.toISOString().split('T')[0],
+                     });
+                   }}
+                   className={`py-3 px-4 rounded-xl border text-xs font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 ${
+                     newClient.status === 'trial'
+                       ? 'bg-amber-500/20 border-amber-500/60 text-amber-400 shadow-lg shadow-amber-500/15 ring-2 ring-amber-500/30'
+                       : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                   }`}
+                 >
+                   <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
+                   <span>⚡ Teste Grátis (Degustação)</span>
+                 </button>
+               </div>
+
+               {/* Quick Trial Expiration Presets */}
+               <AnimatePresence>
+                 {newClient.status === 'trial' && (
+                   <motion.div 
+                     initial={{ opacity: 0, height: 0 }}
+                     animate={{ opacity: 1, height: 'auto' }}
+                     exit={{ opacity: 0, height: 0 }}
+                     className="mt-3 pt-3 border-t border-slate-800/80 overflow-hidden"
+                   >
+                     <div className="flex items-center justify-between mb-2">
+                       <span className="text-[11px] text-amber-400 font-bold flex items-center gap-1">
+                         <Clock className="w-3 h-3" /> Duração Rápida do Teste:
+                       </span>
+                       <span className="text-[10px] text-slate-400 italic">Vencimento automático</span>
+                     </div>
+                     <div className="flex flex-wrap gap-1.5">
+                       {[
+                         { label: '+4 Horas (Hoje)', days: 0 },
+                         { label: '+24 Horas (1 Dia)', days: 1 },
+                         { label: '+48 Horas (2 Dias)', days: 2 },
+                         { label: '+3 Dias', days: 3 },
+                         { label: '+7 Dias', days: 7 },
+                       ].map(preset => (
+                         <button
+                           key={preset.label}
+                           type="button"
+                           onClick={() => {
+                             const d = new Date();
+                             d.setDate(d.getDate() + preset.days);
+                             setNewClient({ ...newClient, expiresAt: d.toISOString().split('T')[0] });
+                             showToast(`Vencimento do teste definido para ${preset.label}`, 'info');
+                           }}
+                           className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm"
+                         >
+                           {preset.label}
+                         </button>
+                       ))}
+                     </div>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
              </div>
-             <div className="space-y-1.5">
-               <label className="text-xs text-slate-400">Sobrenome <span className="text-slate-500 ml-1">(Opcional)</span></label>
-               <input type="text" value={newClient.lastName} onChange={e => setNewClient({...newClient, lastName: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all" />
-             </div>
-             <div className="space-y-1.5">
-               <label className="text-xs text-slate-400">WhatsApp</label>
-               <input required type="tel" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all" placeholder="(00) 00000-0000" />
-             </div>
-             <div className="space-y-1.5">
-               <label className="text-xs text-slate-400">Plano</label>
-               <select value={newClient.planId} onChange={e => setNewClient({...newClient, planId: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all">
-                 {(storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-               </select>
-             </div>
-             <div className="space-y-1.5">
-               <label className="text-xs text-slate-400">Valor Customizado <span className="text-[10px] text-slate-500 ml-1">(Opcional)</span></label>
-               <input 
-                 type="number" 
-                 step="0.01"
-                 value={newClient.customPrice} 
-                 onChange={e => setNewClient({...newClient, customPrice: e.target.value})} 
-                 className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all" 
-                 placeholder="Usar valor do plano"
-               />
-             </div>
-             <div className="space-y-1.5">
-               <label className="text-xs text-slate-400 font-medium">Data de Vencimento <span className="text-red-500">*</span></label>
-               <input 
-                 required 
-                 type="date" 
-                 value={newClient.expiresAt} 
-                 onChange={e => setNewClient({...newClient, expiresAt: e.target.value})} 
-                 className="w-full bg-slate-950/50 border border-emerald-500/30 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all [color-scheme:dark]" 
-               />
-               <p className="text-[10px] text-slate-500 italic">Defina quando o acesso do cliente expira.</p>
+
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+               <div className="space-y-1.5">
+                 <label className="text-xs text-slate-400">Nome <span className="text-red-500">*</span></label>
+                 <input required type="text" value={newClient.firstName} onChange={e => setNewClient({...newClient, firstName: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all" placeholder="Ex: Michael" />
+               </div>
+               <div className="space-y-1.5">
+                 <label className="text-xs text-slate-400">Sobrenome <span className="text-slate-500 ml-1">(Opcional)</span></label>
+                 <input type="text" value={newClient.lastName} onChange={e => setNewClient({...newClient, lastName: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all" placeholder="Ex: Silva" />
+               </div>
+               <div className="space-y-1.5">
+                 <label className="text-xs text-slate-400">WhatsApp <span className="text-red-500">*</span></label>
+                 <input required type="tel" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all" placeholder="(00) 00000-0000" />
+               </div>
+               <div className="space-y-1.5">
+                 <CustomSelect
+                   label="Plano Selecionado"
+                   value={newClient.planId}
+                   onChange={val => {
+                     const currentPlans = storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS;
+                     const isTrial = val === 'teste' || val.toLowerCase().includes('teste');
+                     setNewClient({
+                       ...newClient,
+                       planId: val,
+                       status: isTrial ? 'trial' : newClient.status,
+                       customPrice: isTrial ? '0.00' : newClient.customPrice,
+                     });
+                   }}
+                   options={(storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).map(p => ({
+                     value: p.id,
+                     label: p.name,
+                     badge: p.price === 0 ? 'GRÁTIS' : `R$ ${p.price.toFixed(2)}`,
+                     color: p.price === 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
+                   }))}
+                 />
+               </div>
+               <div className="space-y-1.5">
+                 <label className="text-xs text-slate-400">Valor Customizado <span className="text-[10px] text-slate-500 ml-1">(Opcional)</span></label>
+                 <input 
+                   type="text" 
+                   inputMode="decimal"
+                   value={newClient.customPrice} 
+                   onChange={e => setNewClient({...newClient, customPrice: e.target.value})} 
+                   className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all" 
+                   placeholder="Ex: 29,90"
+                 />
+               </div>
+               <div className="space-y-1.5">
+                 <label className="text-xs text-slate-400 font-medium">Data de Vencimento <span className="text-red-500">*</span></label>
+                 <input 
+                   required 
+                   type="date" 
+                   value={newClient.expiresAt} 
+                   onChange={e => setNewClient({...newClient, expiresAt: e.target.value})} 
+                   className="w-full bg-slate-950/50 border border-emerald-500/30 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all [color-scheme:dark]" 
+                 />
+                 <p className="text-[10px] text-slate-500 italic">Defina quando o acesso expira.</p>
+               </div>
              </div>
              <div className="space-y-1.5 lg:col-span-4 mt-2">
                <label className="text-xs text-slate-400 mb-2 block">Dispositivos (Selecione até 2)</label>
@@ -904,23 +1030,26 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="space-y-2">
-                              <select 
-                                value={editPlanId} 
-                                onChange={e => setEditPlanId(e.target.value)} 
-                                className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white outline-none focus:ring-1 focus:ring-blue-500/50"
-                              >
-                                {(storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                              </select>
-                              <select 
-                                value={editStatus} 
-                                onChange={e => setEditStatus(e.target.value as any)} 
-                                className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white outline-none focus:ring-1 focus:ring-blue-500/50"
-                              >
-                                <option value="active">Ativo</option>
-                                <option value="trial">Teste</option>
-                                <option value="pending_payment">Pendente</option>
-                                <option value="cancelled">Cancelado</option>
-                              </select>
+                              <CustomSelect
+                                value={editPlanId}
+                                onChange={val => setEditPlanId(val)}
+                                options={(storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).map(p => ({
+                                  value: p.id,
+                                  label: p.name,
+                                  badge: p.price === 0 ? 'GRÁTIS' : `R$ ${p.price.toFixed(2)}`,
+                                  color: p.price === 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
+                                }))}
+                              />
+                              <CustomSelect
+                                value={editStatus}
+                                onChange={val => setEditStatus(val as any)}
+                                options={[
+                                  { value: 'active', label: 'Ativo', badge: 'Pago', color: 'bg-emerald-500/20 text-emerald-400' },
+                                  { value: 'trial', label: 'Teste (Degustação)', badge: 'Teste', color: 'bg-amber-500/20 text-amber-400' },
+                                  { value: 'pending_payment', label: 'Pendente', badge: 'Aguardando', color: 'bg-yellow-500/20 text-yellow-400' },
+                                  { value: 'cancelled', label: 'Cancelado', badge: 'Inativo', color: 'bg-rose-500/20 text-rose-400' },
+                                ]}
+                              />
                               <input 
                                 type="date" 
                                 value={editExpiresAt} 
@@ -930,12 +1059,12 @@ export default function AdminDashboard() {
                               <div className="relative">
                                 <DollarSign className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
                                 <input 
-                                  type="number" 
-                                  step="0.01"
+                                  type="text" 
+                                  inputMode="decimal"
                                   value={editCustomPrice} 
                                   onChange={e => setEditCustomPrice(e.target.value)} 
                                   className="w-full bg-slate-950 border border-slate-700 rounded pl-7 pr-2 py-1.5 text-xs text-white outline-none focus:ring-1 focus:ring-blue-500/50" 
-                                  placeholder="Valor"
+                                  placeholder="Ex: 29,90"
                                 />
                               </div>
                             </div>
@@ -1094,19 +1223,30 @@ export default function AdminDashboard() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500 uppercase">Plano</label>
-                          <select value={editPlanId} onChange={e => setEditPlanId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-sm text-white">
-                            {(storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                          </select>
+                          <CustomSelect
+                            label="Plano"
+                            value={editPlanId}
+                            onChange={val => setEditPlanId(val)}
+                            options={(storeSettings?.plans && storeSettings.plans.length > 0 ? storeSettings.plans : DEFAULT_PLANS).map(p => ({
+                              value: p.id,
+                              label: p.name,
+                              badge: p.price === 0 ? 'GRÁTIS' : `R$ ${p.price.toFixed(2)}`,
+                              color: p.price === 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
+                            }))}
+                          />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500 uppercase">Status</label>
-                          <select value={editStatus} onChange={e => setEditStatus(e.target.value as any)} className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-sm text-white">
-                            <option value="active">Ativo</option>
-                            <option value="trial">Teste</option>
-                            <option value="pending_payment">Pendente</option>
-                            <option value="cancelled">Cancelado</option>
-                          </select>
+                          <CustomSelect
+                            label="Status"
+                            value={editStatus}
+                            onChange={val => setEditStatus(val as any)}
+                            options={[
+                              { value: 'active', label: 'Ativo', badge: 'Pago', color: 'bg-emerald-500/20 text-emerald-400' },
+                              { value: 'trial', label: 'Teste (Degustação)', badge: 'Teste', color: 'bg-amber-500/20 text-amber-400' },
+                              { value: 'pending_payment', label: 'Pendente', badge: 'Aguardando', color: 'bg-yellow-500/20 text-yellow-400' },
+                              { value: 'cancelled', label: 'Cancelado', badge: 'Inativo', color: 'bg-rose-500/20 text-rose-400' },
+                            ]}
+                          />
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -1443,18 +1583,19 @@ export default function AdminDashboard() {
                               <div className="relative">
                                 <DollarSign className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input 
-                                  type="number" 
-                                  step="0.01"
+                                  type="text" 
+                                  inputMode="decimal"
                                   value={modalEditPrice} 
                                   onChange={e => setModalEditPrice(e.target.value)} 
                                   className="bg-slate-950 border border-blue-500/50 rounded-lg pl-9 pr-3 py-2 text-white font-bold text-lg outline-none focus:ring-2 focus:ring-blue-500/20 w-40"
+                                  placeholder="29,90"
                                   autoFocus
                                 />
                               </div>
                               <button 
                                 onClick={() => {
                                   if (viewingClient) {
-                                    const newPrice = modalEditPrice ? parseFloat(modalEditPrice) : undefined;
+                                    const newPrice = modalEditPrice ? parseFloat(modalEditPrice.replace(',', '.')) : undefined;
                                     updateSubscriptionAdmin(viewingClient.id, { customPrice: newPrice });
                                     setViewingClient({ ...viewingClient, customPrice: newPrice });
                                     setSubscriptions(getSubscriptions().reverse());
@@ -1485,7 +1626,7 @@ export default function AdminDashboard() {
                               )}
                               <button 
                                 onClick={() => {
-                                  setModalEditPrice(viewingClient.customPrice !== undefined ? viewingClient.customPrice.toString() : (storeSettings?.plans.find(p => p.id === viewingClient.planId)?.price || 0).toString());
+                                  setModalEditPrice(viewingClient.customPrice !== undefined ? viewingClient.customPrice.toString().replace('.', ',') : (storeSettings?.plans.find(p => p.id === viewingClient.planId)?.price || 0).toString().replace('.', ','));
                                   setIsEditingPriceInModal(true);
                                 }}
                                 className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-lg border border-slate-700 transition-all hover:text-blue-400 hover:border-blue-500/30"

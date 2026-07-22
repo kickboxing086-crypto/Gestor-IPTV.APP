@@ -5,8 +5,11 @@ import { Save, Plus, Trash2, Copy, Image as ImageIcon, X } from 'lucide-react';
 import { useToast } from './Toast';
 import { motion, AnimatePresence } from 'motion/react';
 
+import CustomSelect from './CustomSelect';
+
 export default function SettingsTab({ settings: initialSettings, onSave }: { settings: StoreSettings, onSave: (settings: StoreSettings) => void }) {
   const [settings, setSettings] = useState<StoreSettings>(initialSettings);
+  const [priceInputs, setPriceInputs] = useState<Record<number, string>>({});
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -90,17 +93,21 @@ export default function SettingsTab({ settings: initialSettings, onSave }: { set
           </div>
           
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-slate-400">Cor de Fundo (Tailwind Class)</label>
-            <select value={settings.backgroundColor} onChange={e => setSettings({...settings, backgroundColor: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all">
-              <option value="bg-slate-950">Slate Escuro (Padrão)</option>
-              <option value="bg-gray-950">Cinza Escuro</option>
-              <option value="bg-zinc-950">Zinco Escuro</option>
-              <option value="bg-neutral-950">Neutro Escuro</option>
-              <option value="bg-stone-950">Pedra Escuro</option>
-              <option value="bg-blue-950">Azul Escuro</option>
-              <option value="bg-purple-950">Roxo Escuro</option>
-              <option value="bg-black">Preto Absoluto</option>
-            </select>
+            <CustomSelect
+              label="Cor de Fundo (Tema)"
+              value={settings.backgroundColor}
+              onChange={val => setSettings({...settings, backgroundColor: val})}
+              options={[
+                { value: 'bg-slate-950', label: 'Slate Escuro (Padrão)', badge: 'Padrão' },
+                { value: 'bg-gray-950', label: 'Cinza Escuro' },
+                { value: 'bg-zinc-950', label: 'Zinco Escuro' },
+                { value: 'bg-neutral-950', label: 'Neutro Escuro' },
+                { value: 'bg-stone-950', label: 'Pedra Escuro' },
+                { value: 'bg-blue-950', label: 'Azul Escuro', badge: 'Especial' },
+                { value: 'bg-purple-950', label: 'Roxo Escuro' },
+                { value: 'bg-black', label: 'Preto Absoluto' },
+              ]}
+            />
           </div>
 
           <div className="space-y-2">
@@ -295,14 +302,16 @@ export default function SettingsTab({ settings: initialSettings, onSave }: { set
                     <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">R$</label>
                     <input 
                       type="text" 
-                      value={plan.price === 0 ? '' : plan.price} 
+                      inputMode="decimal"
+                      value={priceInputs[index] !== undefined ? priceInputs[index] : (plan.price === 0 ? '' : plan.price.toString().replace('.', ','))} 
                       onChange={e => {
-                        const val = e.target.value.replace(',', '.');
-                        if (val === '' || !isNaN(parseFloat(val))) {
-                          updatePlan(index, 'price', val === '' ? 0 : parseFloat(val));
-                        }
+                        const rawVal = e.target.value;
+                        setPriceInputs(prev => ({ ...prev, [index]: rawVal }));
+                        const normalized = rawVal.replace(',', '.').trim();
+                        const parsed = parseFloat(normalized);
+                        updatePlan(index, 'price', rawVal === '' || isNaN(parsed) ? 0 : parsed);
                       }} 
-                      placeholder="0.00"
+                      placeholder="Ex: 29,90"
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" 
                     />
                   </div>
